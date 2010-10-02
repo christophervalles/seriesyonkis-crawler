@@ -1,0 +1,234 @@
+#!/usr/bin/php
+<?php
+
+//Get the url from the first parameter
+
+$url = $argv[1];
+
+if(is_null($url)){
+    echo PHP_EOL . "Missing url parameter" . PHP_EOL;
+    echo "You have to call the crowler like this: ./crawler http://www.seriesyonkis.com/serie/house/" . PHP_EOL . PHP_EOL;
+    exit();
+}
+
+//Validate the url
+if(!preg_match('|^http(s)?://[a-z0-9-]+(.[a-z0-9-]+)*(:[0-9]+)?(/.*)?$|i', $url)){
+    echo PHP_EOL . "Wrong url format" . PHP_EOL;
+    echo "You have to call the crowler like this: ./crawler http://www.seriesyonkis.com/serie/house/" . PHP_EOL . PHP_EOL;
+    exit();
+}
+
+echo  PHP_EOL . PHP_EOL;
+echo '======================================' . PHP_EOL;
+echo 'Searching in: ' . $url . PHP_EOL . PHP_EOL;
+
+$web = getCharpterList($url);
+$chapterLinks = parseChapterLinks($web);
+
+foreach($chapterLinks[0] as $chapter){
+  $downloadPage = getDownloadPage($chapter);
+  $downloadLink = parseDownloadPage($downloadPage);
+  printLink($downloadLink);
+}
+
+echo '======================================' . PHP_EOL;
+echo "FINISHED" . PHP_EOL . PHP_EOL;
+
+/*
+*
+* START FUNCTIONS
+*
+*/
+
+function printLink($link){
+  echo $link . PHP_EOL;
+}
+
+function parseDownloadPage($downloadPage){
+  preg_match_all('/n\/%[a-zA-Z0-9%]*/', $downloadPage, $code);
+  preg_match_all('/<title>[a-zA-Z0-9áéíóúAÉÍÓÚÑñ\(\)\[\]\-\_ ]*/', $downloadPage, $title);
+  
+  $code = substr($code[0][0],3);
+  $code = translateCode($code);
+  
+  $title = $title[0][0];
+  
+  return 'Capítulo: ' . substr($title, 7, strlen($title)-7) . PHP_EOL . "URL: http://www.megaupload.com/?d={$code}&confirmed=1" . PHP_EOL;
+}
+
+function translateCode($code){
+  $code = explode('%',$code);
+  for($x=0;$x<count($code);$x++){
+    switch($code[$x]){
+      case 'BF':
+        $code[$x] = 'A';
+        break;
+      case 'BC':
+        $code[$x] = 'B';
+        break;
+      case 'BD':
+        $code[$x] = 'C';
+        break;
+      case 'BA':
+        $code[$x] = 'D';
+        break;
+      case 'BB':
+        $code[$x] = 'E';
+        break;
+      case 'B8':
+        $code[$x] = 'F';
+        break;
+      case 'B9':
+        $code[$x] = 'G';
+        break;
+      case 'B6':
+        $code[$x] = 'H';
+        break;
+      case 'B7':
+        $code[$x] = 'I';
+        break;
+      case 'B4':
+        $code[$x] = 'J';
+        break;
+      case 'B5':
+        $code[$x] = 'K';
+        break;
+      case 'B2':
+        $code[$x] = 'L';
+        break;
+      case 'B3':
+        $code[$x] = 'M';
+        break;
+      case 'B0':
+        $code[$x] = 'N';
+        break;
+      case 'B1':
+        $code[$x] = 'O';
+        break;
+      case 'AE':
+        $code[$x] = 'P';
+        break;
+      case 'AF':
+        $code[$x] = 'Q';
+        break;
+      case 'AC':
+        $code[$x] = 'R';
+        break;
+      case 'AD':
+        $code[$x] = 'S';
+        break;
+      case 'AA':
+        $code[$x] = 'T';
+        break;
+      case 'AB':
+        $code[$x] = 'U';
+        break;
+      case 'A8':
+        $code[$x] = 'V';
+        break;
+      case 'A9':
+        $code[$x] = 'W';
+        break;
+      case 'A6':
+        $code[$x] = 'X';
+        break;
+      case 'A7':
+        $code[$x] = 'Y';
+        break;
+      case 'A4':
+        $code[$x] = 'Z';
+        break;
+      case 'CE':
+        $code[$x] = '0';
+        break;
+      case 'CF':
+        $code[$x] = '1';
+        break;
+      case 'CC':
+        $code[$x] = '2';
+        break;
+      case 'CD':
+        $code[$x] = '3';
+        break;
+      case 'CA':
+        $code[$x] = '4';
+        break;
+      case 'CB':
+        $code[$x] = '5';
+        break;
+      case 'C8':
+        $code[$x] = '6';
+        break;
+      case 'C9':
+        $code[$x] = '7';
+        break;
+      case 'C6':
+        $code[$x] = '8';
+        break;
+      case 'C7':
+        $code[$x] = '9';
+        break;
+    }
+  }
+  return implode('',$code);
+}
+
+function getDownloadPage($chapter = NULL){
+  if(is_null($chapter)){
+    echo "Error recuperando el enlace del capitulo" . PHP_EOL;
+  }
+  
+  $page = getWebPage($chapter);
+  return $page['content'];
+}
+
+function parseChapterLinks($web){
+  preg_match_all('/http:\/\/www\.seriesyonkis\.com\/capitulo\/[a-zA-Z0-9-\/]*/', $web['content'], $chapterLinks);
+  return $chapterLinks;
+}
+
+function getCharpterList($url = NULL){
+  if(is_null($url) || empty($url)){
+    die("Debes especificar una url en el fichero" . PHP_EOL);
+  }
+  
+  return getWebPage($url);
+}
+
+/**
+ * Get a web file (HTML, XHTML, XML, image, etc.) from a URL.  Return an
+ * array containing the HTTP server response header fields and content.
+ */
+function getWebPage($url){
+    $options = array(
+        CURLOPT_RETURNTRANSFER => true,     // return web page
+        CURLOPT_HEADER         => false,    // don't return headers
+        CURLOPT_FOLLOWLOCATION => true,     // follow redirects
+        CURLOPT_ENCODING       => "",       // handle all encodings
+        CURLOPT_USERAGENT      => "Mozilla/5.0 (Macintosh; U; Intel Mac OS X 10.5; es-ES; rv:1.9.1.2) Gecko/20090729 Firefox/3.5.2 FirePHP/0.3", // who am i
+        CURLOPT_AUTOREFERER    => true,     // set referer on redirect
+        CURLOPT_CONNECTTIMEOUT => 120,      // timeout on connect
+        CURLOPT_TIMEOUT        => 120,      // timeout on response
+        CURLOPT_MAXREDIRS      => 10,       // stop after 10 redirects
+    );
+
+    $ch      = curl_init($url);
+    curl_setopt_array($ch, $options);
+    $content = curl_exec($ch);
+    $err     = curl_errno($ch);
+    $errmsg  = curl_error($ch);
+    $header  = curl_getinfo($ch);
+    curl_close($ch);
+
+    $header['errno']   = $err;
+    $header['errmsg']  = $errmsg;
+    $header['content'] = $content;
+    
+    if($err == 0){
+      return $header;  
+    }else{
+      echo 'Error recuperando pagina ' . $url;
+    }
+}
+
+?>

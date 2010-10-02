@@ -230,5 +230,3 @@ function getWebPage($url){
       echo 'Error recuperando pagina ' . $url;
     }
 }
-
-?>
